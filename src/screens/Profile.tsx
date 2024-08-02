@@ -1,11 +1,58 @@
 import { ScreenHeader } from "@components/ScreenHeader";
 import { UserPhoto } from "@components/UserPhoto";
-import { Center, Heading, Text, VStack } from "@gluestack-ui/themed";
+import { Center, Heading, Text, VStack, useToast } from "@gluestack-ui/themed";
 import { ScrollView, TouchableOpacity } from "react-native";
 import { Input } from "@components/Input";
 import { Button } from "@components/Button";
+import { useState } from "react";
+import * as ImagePicker from "expo-image-picker";
+import * as FileSystem from "expo-file-system";
+import { ToastMessage } from "@components/ToastMessage";
 
 export function Profile() {
+    const [userPhoto, setUserPhoto] = useState("https://pbs.twimg.com/profile_images/1778790400465031168/9fgelLEk_400x400.jpg");
+    const toast = useToast();
+
+    async function handleUserPhotoSelect() {
+        try {
+            const photoSelected = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                aspect: [4, 4],
+                quality: 1,
+                allowsEditing: true,
+                base64: true,
+            });
+
+            if (!photoSelected.canceled) {
+                const photoURI = photoSelected.assets[0].uri;
+
+                if (photoURI) {
+                    const photoInfo = await FileSystem.getInfoAsync(photoURI) as {
+                        size: number;
+                    };
+
+                    if (photoInfo.size && photoInfo.size / 1024 / 1024 > 5) {
+                        return toast.show({
+                            placement: "top",
+                            render: ({ id }) => (
+                                <ToastMessage
+                                    id={id}
+                                    action="error"
+                                    title="A imagem é muito grande. A imagem deve ter no máximo 5MB."
+                                    onClose={() => toast.close(id)}
+                                />
+                            )
+                        })
+                    } else {
+                        setUserPhoto(photoURI);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
     return (
         <VStack flex={1}>
             <ScreenHeader title="Perfil" />
@@ -13,12 +60,12 @@ export function Profile() {
             <ScrollView contentContainerStyle={{ paddingBottom: 36 }}>
                 <Center mt="$6" px="$10">
                     <UserPhoto
-                        source={{ uri: "https://pbs.twimg.com/profile_images/1778790400465031168/9fgelLEk_400x400.jpg" }}
+                        source={{ uri: userPhoto }}
                         alt="Foto do usuário"
                         size="xl"
                     />
 
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={handleUserPhotoSelect}>
                         <Text
                             color="$green500"
                             fontFamily="$heading"
