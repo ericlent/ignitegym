@@ -1,13 +1,14 @@
-import { ToastMessage } from "@components/ToastMessage";
-import { UserDTO } from "@dtos/UserDTOS";
-import { set, useToast } from "@gluestack-ui/themed";
+import { UserDTO } from "@dtos/UserDTO";
 import { api } from "@services/api";
-import { AppError } from "@utils/AppError";
-import { createContext, ReactNode, useState } from "react";
+import { createContext, ReactNode, useEffect, useState } from "react";
+import { storageUserSave, storageUserGet, storageUserRemove } from "@storage/storageUser";
+import { storageAuthTokenSave, storageAuthTokenGet, storageAuthTokenRemove } from "@storage/storageAuthToken";
 
 export type AuthContextDataProps = {
     user: UserDTO;
     signIn: (email: string, password: string) => Promise<void>;
+    signOut: () => Promise<void>;
+    isLoadingUserStorageData: boolean;
 }
 
 export const AuthContext = createContext<AuthContextDataProps>({} as AuthContextDataProps);
@@ -17,37 +18,83 @@ type AuthContextProviderProps = {
 }
 
 export function AuthContextProvider({ children }: AuthContextProviderProps) {
-    const toast = useToast();
     const [user, setUser] = useState<UserDTO>({} as UserDTO);
-    
-    async function signIn(email: string, password: string) {
+    const [isLoadingUserStorageData, setIsLoadingUserStorageData] = useState(true);
+
+    async function userAndTokenUpdate(userData: UserDTO, token: string) {
         try {
-            const { data } = await api.post("sessions", { email, password });
-
-            if (data.user) {
-                setUser(data.user);
-            }
-
+            api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+            setUser(userData);
         } catch (error) {
-            const isAppError = error instanceof AppError;
-            const title = isAppError ? error.message : "Erro no servidor.";
-            toast.show({
-                placement: "top",
-                render: ({ id }) => (
-                    <ToastMessage
-                        id={id}
-                        action="error"
-                        title={title}
-                        onClose={() => toast.close(id)}
-                    />
-                )
-            });
+            throw error;
         }
     }
 
+    async function storageUserAndTokenSave(userData: UserDTO, token: string) {
+        try {
+            setIsLoadingUserStorageData(true);
+            await storageUserSave(userData);
+            await storageAuthTokenSave(token);
+        } catch (error) {
+            throw error;
+        } finally {
+            setIsLoadingUserStorageData(false);
+        }
+    }
+
+    async function loadUserData() {
+        try {
+            setIsLoadingUserStorageData(true);
+            const userLogged = await storageUserGet();
+            const token = await storageAuthTokenGet();
+
+            if (userLogged && token) {
+                userAndTokenUpdate(userLogged, token);
+            }
+        } catch (error) {
+            throw error;
+        } finally {
+            setIsLoadingUserStorageData(false);
+        }
+    }
+
+    useEffect(() => {
+        loadUserData();
+    }, []);
+
+    async function signIn(email: string, password: string) {
+        try {
+            const { data } = await api.post("sessions", { email, password });
+            console.log(data);
+
+            if (data.user && data.token) {
+                setIsLoadingUserStorageData(true);
+                await storageUserAndTokenSave(data.user, data.token);
+                userAndTokenUpdate(data.user, data.token);
+            }
+
+        } catch (error) {
+            throw (error);
+        } finally {
+            setIsLoadingUserStorageData(false);
+        }
+    }
+
+    async function signOut() {
+        try {
+            setIsLoadingUserStorageData(true);
+            setUser({} as UserDTO);
+            await storageUserRemove();
+            await storageAuthTokenRemove();
+        } catch (error) {
+            throw (error);
+        } finally {
+            setIsLoadingUserStorageData(false);
+        }
+    }
 
     return (
-        <AuthContext.Provider value={{ user, signIn }}>
+        <AuthContext.Provider value={{ user, signIn, signOut, isLoadingUserStorageData }}>
             {children}
         </AuthContext.Provider>
     );

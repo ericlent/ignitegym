@@ -1,17 +1,20 @@
 import { Heading, HStack, Image, Text, VStack, Icon } from "@gluestack-ui/themed";
 import { TouchableOpacity, TouchableOpacityProps } from "react-native";
 import { ChevronRight } from "lucide-react-native";
+import { ExerciseDTO } from "@dtos/ExerciseDTO";
+import { api } from "@services/api";
+export { api } from "@services/api"
 
-type Props = TouchableOpacityProps
+type Props = TouchableOpacityProps & {
+    data: ExerciseDTO;
+}
 
-export function ExerciseCard({ ...rest }: Props) {
+export function ExerciseCard({ data, ...rest }: Props) {
     return (
         <TouchableOpacity {...rest}>
             <HStack bg="$gray500" alignItems="center" p="$2" pr="$4" rounded="$md" mb="$3">
                 <Image
-                    source={{
-                        uri: "https://static.vecteezy.com/ti/vetor-gratis/p1/5363469-treinamento-fisico-dependencia-plano-ilustracao-treino-vicio-cansado-academia-viciado-exercicio-obcecado-levantador-de-peso-atleta-equilibrio-na-bola-com-pesos-personagem-de-desenho-animado-vetor.jpg",
-                    }}
+                    source={{ uri: `${api.defaults.baseURL}exercise/thumb/${data.thumb}` }}
                     alt="Imagem do exercício"
                     w="$16"
                     h="$16"
@@ -22,10 +25,10 @@ export function ExerciseCard({ ...rest }: Props) {
 
                 <VStack flex={1}>
                     <Heading fontSize="$lg" color="$white" fontFamily="$heading">
-                        Puxada frontal
+                        {data.name}
                     </Heading>
                     <Text fontSize="$sm" color="$gray200" mt="$1" numberOfLines={2}>
-                        3 séries x 12 repetições
+                        {data.series} séries x {data.repetitions} repetições
                     </Text>
                 </VStack>
 

@@ -9,6 +9,9 @@ import * as yup from "yup";
 import { Controller, useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import { useAuth } from "@hooks/useAuth";
+import { AppError } from "@utils/AppError";
+import { ToastMessage } from "@components/ToastMessage";
+import { useState } from "react";
 
 type FormDataProps = {
     email: string;
@@ -22,8 +25,9 @@ const signInSchema = yup.object({
 
 export function SignIn() {
     const navigation = useNavigation<AuthNavigatorRoutesProps>();
-
+    const toast = useToast();
     const { signIn } = useAuth();
+    const [isLoading, setIsLoading] = useState(false);
 
     const { control, handleSubmit, formState: { errors } } = useForm<FormDataProps>({
         resolver: yupResolver(signInSchema)
@@ -34,7 +38,25 @@ export function SignIn() {
     }
 
     async function handleSignIn({ email, password }: FormDataProps) {
-        await signIn(email, password);
+        try {
+            setIsLoading(true);
+            await signIn(email, password);
+        } catch (error) {
+            const isAppError = error instanceof AppError;
+            const title = isAppError ? error.message : "Erro no servidor.";
+            setIsLoading(false);
+            toast.show({
+                placement: "top",
+                render: ({ id }) => (
+                    <ToastMessage
+                        id={id}
+                        action="error"
+                        title={title}
+                        onClose={() => toast.close(id)}
+                    />
+                )
+            });
+        }
     }
 
     return (
@@ -96,7 +118,7 @@ export function SignIn() {
                             )}
                         />
 
-                        <Button title="Acessar" onPress={handleSubmit(handleSignIn)} />
+                        <Button title="Acessar" onPress={handleSubmit(handleSignIn)} isLoading={isLoading} />
                     </Center>
 
                     <Center flex={1} justifyContent="flex-end" mt="$4">
