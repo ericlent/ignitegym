@@ -16,17 +16,17 @@ export function Home() {
     const [isLoading, setIsLoading] = useState(true);
     const [exercises, setExercises] = useState<ExerciseDTO[]>([]);
     const [groups, setGroups] = useState<string[]>([]);
-    const [groupSelected, setGroupSelected] = useState("Costas");
+    const [groupSelected, setGroupSelected] = useState("antebraço");
     const navigation = useNavigation<AppNavigatorRoutesProps>();
     const toast = useToast();
 
-    function handleOpenExerciseDetails() {
-        navigation.navigate("exercise");
+    function handleOpenExerciseDetails(exerciseId: string) {
+        navigation.navigate("exercise", { exerciseId });
     }
 
     async function fetchGroups() {
         try {
-            const response = await api.get("groups");
+            const response = await api.get("/groups");
             setGroups(response.data);
         } catch (error) {
             const isAppError = error instanceof AppError;
@@ -48,8 +48,7 @@ export function Home() {
     async function fetchExercisesbyGroup() {
         try {
             setIsLoading(true);
-            const response = await api.get(`exercises/bygroup/${groupSelected.toLowerCase()}`);
-            console.log(response.data);
+            const response = await api.get(`/exercises/bygroup/${groupSelected.toLowerCase()}`);
             setExercises(response.data);
         } catch (error) {
             const isAppError = error instanceof AppError;
@@ -113,7 +112,7 @@ export function Home() {
                     <FlatList
                         data={exercises}
                         keyExtractor={(item) => item.id}
-                        renderItem={({ item }) => <ExerciseCard onPress={handleOpenExerciseDetails} data={item} />}
+                        renderItem={({ item }) => <ExerciseCard onPress={() => handleOpenExerciseDetails(item.id)} data={item} />}
                         showsVerticalScrollIndicator={false}
                         contentContainerStyle={{ paddingBottom: 20 }}
                     />

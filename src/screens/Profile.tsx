@@ -5,13 +5,64 @@ import { ScrollView, TouchableOpacity } from "react-native";
 import { Input } from "@components/Input";
 import { Button } from "@components/Button";
 import { useState } from "react";
+import { ToastMessage } from "@components/ToastMessage";
+import { Controller, useForm } from "react-hook-form";
+import { useAuth } from "@hooks/useAuth";
+import { yupResolver } from "@hookform/resolvers/yup";
+import { AppError } from "@utils/AppError";
+import { api } from "@services/api";
 import * as ImagePicker from "expo-image-picker";
 import * as FileSystem from "expo-file-system";
-import { ToastMessage } from "@components/ToastMessage";
+import * as yup from "yup";
+import defaultUserPhotoImg from "@assets/userPhotoDefault.png"
+
+type FormDataProps = {
+    name: string;
+    email?: string;
+    old_password?: string | null;
+    password?: string | null;
+    confirm_password?: string | null;
+}
+
+const profileSchema = yup.object({
+    name: yup
+        .string()
+        .required("Informe o nome."),
+    old_password: yup
+        .string()
+        .min(6, "A senha precisa ter no mínimo 6 caracteres.")
+        .nullable()
+        .transform((value) => !!value ? value : null),
+    password: yup
+        .string()
+        .min(6, "A senha precisa ter no mínimo 6 caracteres.")
+        .nullable()
+        .transform((value) => !!value ? value : null),
+    confirm_password: yup
+        .string()
+        .nullable()
+        .transform((value) => !!value ? value : null)
+        .oneOf([yup.ref("password")], 'As senhas devem ser iguais.')
+        .when("password", {
+            is: (Field: any) => Field,
+            then: (schema) =>
+                schema.nullable().required("Informe a confirmação de senha").transform((value) => !!value ? value : null)
+        })
+});
 
 export function Profile() {
-    const [userPhoto, setUserPhoto] = useState("https://pbs.twimg.com/profile_images/1778790400465031168/9fgelLEk_400x400.jpg");
     const toast = useToast();
+    const [userPhoto, setUserPhoto] = useState("https://pbs.twimg.com/profile_images/1778790400465031168/9fgelLEk_400x400.jpg");
+    const [isUpdating, setIsUpdating] = useState(false);
+    const { user, updateUserProfile } = useAuth();
+
+    const { control, handleSubmit, formState: { errors } } = useForm<FormDataProps>({
+        defaultValues: {
+            name: user.name,
+            email: user.email
+        },
+        resolver: yupResolver(profileSchema)
+    });
 
     async function handleUserPhotoSelect() {
         try {
@@ -44,12 +95,84 @@ export function Profile() {
                             )
                         })
                     } else {
-                        setUserPhoto(photoURI);
+                        const fileExtension = photoURI.split(".").pop();
+                        
+                        const photoFile = {
+                            name: `${user.name}.${fileExtension}`.toLowerCase().replace(" ", "").trim(),
+                            uri: photoURI,
+                            type: `${photoSelected.assets[0].type}/${fileExtension}`
+                        } as any;
+
+                        const userPhotoUploadForm = new FormData();
+                        userPhotoUploadForm.append("avatar", photoFile);
+
+                        const avatarUpdatedResponse = await api.patch("/users/avatar", userPhotoUploadForm, {
+                            headers: {
+                                'Content-Type': 'multipart/form-data',
+                            },
+                        });
+
+                        const userUpdated = user;
+                        userUpdated.avatar = avatarUpdatedResponse.data.avatar;
+                        updateUserProfile(userUpdated);
+
+                        toast.show({
+                            placement: "top",
+                            render: ({ id }) => (
+                                <ToastMessage
+                                    id={id}
+                                    action="success"
+                                    title="Foto atualizada!"
+                                    onClose={() => toast.close(id)}
+                                />
+                            )
+                        });
                     }
                 }
             }
         } catch (error) {
             console.error(error);
+        }
+    }
+
+    async function handleProfileUpdate(data: FormDataProps) {
+        try {
+            setIsUpdating(true);
+            const userUpdated = user;
+            userUpdated.name = data.name;
+
+            await api.put("/users", data);
+
+            await updateUserProfile(userUpdated);
+
+            toast.show({
+                placement: "top",
+                render: ({ id }) => (
+                    <ToastMessage
+                        id={id}
+                        action="success"
+                        title="Perfil atualizado com sucesso!"
+                        onClose={() => toast.close(id)}
+                    />
+                )
+            });
+
+        } catch (error) {
+            const isAppError = error instanceof AppError;
+            const title = isAppError ? error.message : "Não possível atualizar o perfil.";
+            toast.show({
+                placement: "top",
+                render: ({ id }) => (
+                    <ToastMessage
+                        id={id}
+                        action="error"
+                        title={title}
+                        onClose={() => toast.close(id)}
+                    />
+                )
+            });
+        } finally {
+            setIsUpdating(false);
         }
     }
 
@@ -60,7 +183,7 @@ export function Profile() {
             <ScrollView contentContainerStyle={{ paddingBottom: 36 }}>
                 <Center mt="$6" px="$10">
                     <UserPhoto
-                        source={{ uri: userPhoto }}
+                        source={user.avatar ? { uri: `${api.defaults.baseURL}/avatar/${user.avatar}` } : defaultUserPhotoImg}
                         alt="Foto do usuário"
                         size="xl"
                     />
@@ -77,9 +200,37 @@ export function Profile() {
                         </Text>
                     </TouchableOpacity>
 
+
+
                     <Center w="$full" gap="$4">
-                        <Input placeholder="Nome" bg="$gray600" />
-                        <Input value="eric@email.com" bg="$gray600" isReadOnly />
+                        <Controller
+                            control={control}
+                            name="name"
+                            render={({ field: { onChange, value } }) => (
+                                <Input
+                                    placeholder="Nome"
+                                    bg="$gray600"
+                                    onChangeText={onChange}
+                                    value={value}
+                                    errorMessage={errors.name?.message}
+                                />
+                            )}
+                        />
+
+                        <Controller
+                            control={control}
+                            name="email"
+                            render={({ field: { onChange, value } }) => (
+                                <Input
+                                    placeholder="E-mail"
+                                    bg="$gray600"
+                                    onChangeText={onChange}
+                                    value={value}
+                                    isReadOnly
+                                />
+                            )}
+                        />
+
                     </Center>
 
                     <Heading alignSelf="flex-start" fontFamily="$heading" color="$gray200" fontSize="$md" mt="$12" mb="$2">
@@ -87,11 +238,47 @@ export function Profile() {
                     </Heading>
 
                     <Center w="$full" gap="$4">
-                        <Input placeholder="Senha antiga" bg="$gray600" secureTextEntry />
-                        <Input placeholder="Nova senha" bg="$gray600" secureTextEntry />
-                        <Input placeholder="Confirme a nova senha" bg="$gray600" secureTextEntry />
 
-                        <Button title="Atualizar" />
+                        <Controller
+                            control={control}
+                            name="old_password"
+                            render={({ field: { onChange } }) => (
+                                <Input
+                                    placeholder="Senha atual"
+                                    bg="$gray600"
+                                    onChangeText={onChange}
+                                    errorMessage={errors.old_password?.message}
+                                />
+                            )}
+                        />
+
+                        <Controller
+                            control={control}
+                            name="password"
+                            render={({ field: { onChange } }) => (
+                                <Input
+                                    placeholder="Nova senha"
+                                    bg="$gray600"
+                                    onChangeText={onChange}
+                                    errorMessage={errors.password?.message}
+                                />
+                            )}
+                        />
+
+                        <Controller
+                            control={control}
+                            name="confirm_password"
+                            render={({ field: { onChange } }) => (
+                                <Input
+                                    placeholder="Confirme a nova senha"
+                                    bg="$gray600"
+                                    onChangeText={onChange}
+                                    errorMessage={errors.confirm_password?.message}
+                                />
+                            )}
+                        />
+
+                        <Button title="Atualizar" onPress={handleSubmit(handleProfileUpdate)} isLoading={isUpdating} />
                     </Center>
                 </Center>
 

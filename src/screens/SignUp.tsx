@@ -46,7 +46,7 @@ export function SignUp() {
     async function handleSignUp({ name, email, password }: FormDataProps) {
         try {
             setIsLoading(true);
-            await api.post("users", { name, email, password });
+            await api.post("/users", { name, email, password });
             await signIn(email, password);
 
         } catch (error) {

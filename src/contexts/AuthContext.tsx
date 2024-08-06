@@ -6,6 +6,7 @@ import { storageAuthTokenSave, storageAuthTokenGet, storageAuthTokenRemove } fro
 
 export type AuthContextDataProps = {
     user: UserDTO;
+    updateUserProfile: (userUpdated: UserDTO) => Promise<void>;
     signIn: (email: string, password: string) => Promise<void>;
     signOut: () => Promise<void>;
     isLoadingUserStorageData: boolean;
@@ -64,8 +65,7 @@ export function AuthContextProvider({ children }: AuthContextProviderProps) {
 
     async function signIn(email: string, password: string) {
         try {
-            const { data } = await api.post("sessions", { email, password });
-            console.log(data);
+            const { data } = await api.post("/sessions", { email, password });
 
             if (data.user && data.token) {
                 setIsLoadingUserStorageData(true);
@@ -93,8 +93,18 @@ export function AuthContextProvider({ children }: AuthContextProviderProps) {
         }
     }
 
+    async function updateUserProfile(userUpdated: UserDTO) {
+        try {
+            setUser(userUpdated);
+            await storageUserSave(userUpdated);
+
+        } catch (error) {
+            throw (error);
+        }
+    }
+
     return (
-        <AuthContext.Provider value={{ user, signIn, signOut, isLoadingUserStorageData }}>
+        <AuthContext.Provider value={{ user, updateUserProfile, signIn, signOut, isLoadingUserStorageData }}>
             {children}
         </AuthContext.Provider>
     );
