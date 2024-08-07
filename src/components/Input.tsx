@@ -1,4 +1,4 @@
-import { Input as GulestackInput, InputField, FormControl, FormControlErrorText, FormControlError } from "@gluestack-ui/themed";
+import { Input as GluestackInput, InputField, FormControl, FormControlErrorText, FormControlError, FormControlErrorIcon, AlertCircleIcon } from "@gluestack-ui/themed";
 import { ComponentProps } from "react";
 
 type Props = ComponentProps<typeof InputField> & {
@@ -12,7 +12,7 @@ export function Input({ isReadOnly = false, errorMessage = null, isInvalid = fal
 
     return (
         <FormControl isInvalid={invalid} mb="$4" w="$full">
-            <GulestackInput
+            <GluestackInput
                 isInvalid={isInvalid}
                 h="$14"
                 borderWidth="$0"
@@ -36,9 +36,11 @@ export function Input({ isReadOnly = false, errorMessage = null, isInvalid = fal
                     placeholderTextColor="$gray300"
                     {...rest}
                 />
-            </GulestackInput>
+
+            </GluestackInput>
 
             <FormControlError>
+                <FormControlErrorIcon size="md" as={AlertCircleIcon} />
                 <FormControlErrorText color="$red500">
                     {errorMessage}
                 </FormControlErrorText>

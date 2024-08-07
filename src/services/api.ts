@@ -15,9 +15,9 @@ type APIInstanceProps = AxiosInstance & {
 
 const api = axios.create({
     //Clube
-    baseURL: "http://10.0.1.168:3333",
+    //baseURL: "http://10.0.1.168:3333",
     //Casa
-    //baseURL: "http://192.168.0.109:3333",
+    baseURL: "http://192.168.0.109:3333",
     timeout: 5000,
 }) as APIInstanceProps;
 

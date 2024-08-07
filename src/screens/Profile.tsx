@@ -52,7 +52,6 @@ const profileSchema = yup.object({
 
 export function Profile() {
     const toast = useToast();
-    const [userPhoto, setUserPhoto] = useState("https://pbs.twimg.com/profile_images/1778790400465031168/9fgelLEk_400x400.jpg");
     const [isUpdating, setIsUpdating] = useState(false);
     const { user, updateUserProfile } = useAuth();
 
@@ -96,7 +95,7 @@ export function Profile() {
                         })
                     } else {
                         const fileExtension = photoURI.split(".").pop();
-                        
+
                         const photoFile = {
                             name: `${user.name}.${fileExtension}`.toLowerCase().replace(" ", "").trim(),
                             uri: photoURI,
@@ -156,6 +155,8 @@ export function Profile() {
                     />
                 )
             });
+
+            
 
         } catch (error) {
             const isAppError = error instanceof AppError;
@@ -244,6 +245,7 @@ export function Profile() {
                             name="old_password"
                             render={({ field: { onChange } }) => (
                                 <Input
+                                    secureTextEntry
                                     placeholder="Senha atual"
                                     bg="$gray600"
                                     onChangeText={onChange}
@@ -257,6 +259,7 @@ export function Profile() {
                             name="password"
                             render={({ field: { onChange } }) => (
                                 <Input
+                                    secureTextEntry
                                     placeholder="Nova senha"
                                     bg="$gray600"
                                     onChangeText={onChange}
@@ -270,6 +273,7 @@ export function Profile() {
                             name="confirm_password"
                             render={({ field: { onChange } }) => (
                                 <Input
+                                    secureTextEntry
                                     placeholder="Confirme a nova senha"
                                     bg="$gray600"
                                     onChangeText={onChange}

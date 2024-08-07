@@ -12,7 +12,7 @@ export async function storageAuthTokenSave({ token, refresh_token }: StorageAuth
 
 export async function storageAuthTokenGet() {
     const response = await AsyncStorage.getItem(AUTH_TOKEN_STORAGE);
-
+    //Alert de conversão do JSON.parse
     const { token, refresh_token }: StorageAuthTokenProps = response ? JSON.parse(response) : {};
 
     return { token, refresh_token };
